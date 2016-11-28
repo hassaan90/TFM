@@ -162,7 +162,9 @@ if __name__ == '__main__':
     if fit:
         print ('-- Fitting the model...')
         
-        kfold_weights_path = os.path.join('weights', "checkpoint" + ".hdf5" )
+        if not os.path.isfile('../output/weights') and not os.path.isdir('../output/weights'):
+            os.mkdir('../output/weights')
+        kfold_weights_path = os.path.join('../output/weights', 'checkpoint' + '.hdf5' )
         callbacks = [
             ModelCheckpoint(kfold_weights_path, monitor='val_loss', save_best_only=True, verbose=0)
         ]
@@ -197,14 +199,14 @@ if __name__ == '__main__':
         else:  
             #model.fit(Xa, ya, batch_size=40, nb_epoch=50, verbose=1, validation_data=(Xa_val, ya_val), callbacks=callbacks)
             #model.fit(X, y, batch_size=4, nb_epoch=100, verbose=1, validation_data=(X_val, y_val), callbacks=callbacks)
+        
+            #1120/2 = 560
             model.fit({'main_input': X, 'aux_input': X},
                       {'main_output': y, 'aux_output': y}, validation_split=0.5,
-                      nb_epoch=100, batch_size=10, callbacks=callbacks)
+                      nb_epoch=500, batch_size=14, callbacks=callbacks)
         
         print ('-- Saving weights...')
-        if not os.path.isfile("weights") and not os.path.isdir("weights"):
-            os.mkdir("weights")
-        oname = os.path.join('weights', "weights.hdf5" ) #nb_epoch
+        oname = os.path.join('../output/weights', 'weights.hdf5') #nb_epoch
         model.save_weights(oname)
         
     if predicting:
@@ -212,7 +214,7 @@ if __name__ == '__main__':
         general_predictions = model.predict(np.array(X[0:10]))
         predictions = general_predictions[0]
         
-        result = (predictions - predictions.min()) / (predictions.max() - predictions.min())
+        result = (predictions - predictions.min()) / (predictions.max() - predictions.min()) #Cal?
                      
         #print ('-- Saving predictions...')
         if unidimensional:
@@ -229,16 +231,16 @@ if __name__ == '__main__':
                 pack = np.array([ib,ig,ir]).transpose(1,2,0)
             else:
                 pack = predictions[idx].transpose(1,2,0)
-            oname = os.path.join('predictions', str(idx)+'_reg.png')
+            oname = os.path.join('../output/predictions', str(idx)+'_reg.png')
             cv2.imwrite(oname, pack*255)
             
             resulty = np.array(np.reshape(y,(y.shape[0],color_type,img_rows,img_cols)))
             output_img = resulty[idx]
             pack = output_img.transpose(1,2,0) # img_rows x img_cols x 3
-            oname = os.path.join('predictions', str(idx)+'_y.png')
+            oname = os.path.join('../output/predictions', str(idx)+'_y.png')
             cv2.imwrite(oname, pack*255) 
             
             output_img = X[idx]
             pack = output_img.transpose(1,2,0) # img_rows x img_cols x 3
-            oname = os.path.join('predictions', str(idx)+'_oX.png')
+            oname = os.path.join('../output/predictions', str(idx)+'_oX.png')
             cv2.imwrite(oname, pack*255)

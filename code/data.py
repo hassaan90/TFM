@@ -128,7 +128,7 @@ def prepare_data(img_rows=32, img_cols=32, color_type=3, data_augmentation=True,
     train=['alley_1', 'bamboo_1', 'bandage_1', 'cave_2', 'market_2', 'market_6', 'shaman_2', 'sleeping_1', 'temple_2', 'alley_2', 'bamboo_2', 'bandage_2', 'cave_4', 'market_5', 'mountain_1', 'shaman_3', 'sleeping_2', 'temple_3']   
 
     
-    path = os.path.join(os.getcwd(),'data','segnet')
+    path = os.path.join(os.getcwd(),'../input/data','segnet')
     
     if print_step == True:
         print('-- Current file: load.py.')    
