@@ -110,7 +110,7 @@ if __name__ == '__main__':
     gen_data = 1
     unidimensional = 0
     
-    fit = 1
+    fit = 0
     augmentation = 0
     
     predicting = 1
@@ -141,7 +141,7 @@ if __name__ == '__main__':
     print ('-- Building the model...') 
     # VGG    
     #model = cmodel.VGG_16(X[0].shape)
-    model = cmodel.myhypercolumn(X[0].shape)
+    model = cmodel.myhypercolumn(X[0].shape, '../output/weights/checkpoint_263it_w1-02.hdf5')
     
     # Inpainting
     #model = cmodel.inpainting(X[0].shape)
@@ -200,18 +200,20 @@ if __name__ == '__main__':
             #model.fit(Xa, ya, batch_size=40, nb_epoch=50, verbose=1, validation_data=(Xa_val, ya_val), callbacks=callbacks)
             #model.fit(X, y, batch_size=4, nb_epoch=100, verbose=1, validation_data=(X_val, y_val), callbacks=callbacks)
         
-            #1120/2 = 560
+            # 1120/2 = 560
+            # 10,14,16,20,28,35,40,56,70,80,112,140,280,560,
             model.fit({'main_input': X, 'aux_input': X},
                       {'main_output': y, 'aux_output': y}, validation_split=0.5,
-                      nb_epoch=500, batch_size=14, callbacks=callbacks)
+                      nb_epoch=500, batch_size=10, callbacks=callbacks)
         
         print ('-- Saving weights...')
         oname = os.path.join('../output/weights', 'weights.hdf5') #nb_epoch
         model.save_weights(oname)
         
     if predicting:
+        num_outputs = 50
         print ('-- Predicting...')
-        general_predictions = model.predict(np.array(X[0:10]))
+        general_predictions = model.predict(np.array(X[0:num_outputs]))
         predictions = general_predictions[0]
         
         result = (predictions - predictions.min()) / (predictions.max() - predictions.min()) #Cal?
@@ -220,7 +222,7 @@ if __name__ == '__main__':
         if unidimensional:
             result = np.array(np.reshape(predictions,(y.shape[0],color_type,img_rows,img_cols)))
         
-        for idx in range(10): #y_val.shape[0]
+        for idx in range(num_outputs): #y_val.shape[0]
             #idx = 0
                         
             output_img = result[idx]
