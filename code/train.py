@@ -103,8 +103,8 @@ def cconv(image, g_kernel, batch_size):
     
 
 if __name__ == '__main__':
-    img_rows = 80*2 #80*2 #436/4 #128 #224 #109
-    img_cols = 112*2 #112*2 #1024/4 #128 #224 #256
+    img_rows = 80 #80*2 #436/4 #128 #224 #109
+    img_cols = 112 #112*2 #1024/4 #128 #224 #256
     color_type = 3
     
     gen_data = 1
