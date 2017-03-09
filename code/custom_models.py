@@ -1123,3 +1123,81 @@ def myhypercolumn(shp=(3,224,224), weights_path=''):
     
     return model
 #END myhypercolumn
+    
+#myhypercolumn2
+def weighted_hypercolumn(shp=(3,224,224), weights_path=''):
+    splitted = True
+    act = 'relu' #'elu'
+    
+    inputs = Input(shp, name='main_input')
+    conv1 = inception_block(inputs, 32, batch_mode=2, splitted=splitted, activation=act)
+    
+    pool1 = NConvolution2D(32, 3, 3, border_mode='same', subsample=(2,2))(conv1)
+    pool1 = Dropout(0.5)(pool1)
+    
+    conv2 = inception_block(pool1, 64, batch_mode=2, splitted=splitted, activation=act)
+    pool2 = NConvolution2D(64, 3, 3, border_mode='same', subsample=(2,2))(conv2)
+    pool2 = Dropout(0.5)(pool2)
+    
+    conv3 = inception_block(pool2, 128, batch_mode=2, splitted=splitted, activation=act)
+    pool3 = NConvolution2D(128, 3, 3, border_mode='same', subsample=(2,2))(conv3)
+    pool3 = Dropout(0.5)(pool3)
+     
+    conv4 = inception_block(pool3, 256, batch_mode=2, splitted=splitted, activation=act)
+    pool4 = NConvolution2D(256, 3, 3, border_mode='same', subsample=(2,2))(conv4)
+    pool4 = Dropout(0.5)(pool4)
+    
+    conv5 = inception_block(pool4, 512, batch_mode=2, splitted=splitted, activation=act)
+    conv5 = Dropout(0.5)(conv5)
+    
+    #Hypercolumns
+    hc_conv5 = UpSampling2D(size=(16, 16))(conv5) #8x8, f = 16
+    hc_conv4 = UpSampling2D(size=(8, 8))(conv4) #16x16, f = 8
+    hc_conv3 = UpSampling2D(size=(4, 4))(conv3) #32x32, f = 4
+    hc_conv2 = UpSampling2D(size=(2, 2))(conv2) #64x64, f = 2
+    
+    hc = merge([conv1, hc_conv2, hc_conv3, hc_conv4, hc_conv5], mode='concat', concat_axis=1) #(None, 992, 128, 128)
+
+    #From (None, 992, 128, 128) to 3x128x128
+    #hc_red_conv1 = inception_block(hc, 128, batch_mode=2, splitted=splitted, activation=act)
+    #hc_red_conv2 = inception_block(hc_red_conv1, 64, batch_mode=2, splitted=splitted, activation=act)
+    hc_red_zpad1 = ZeroPadding2D((1,1))(hc)
+    hc_red_conv1 = Convolution2D(128, 3, 3, init='he_normal', activation=act)(hc_red_zpad1)
+    hc_red_zpad2 = ZeroPadding2D((1,1))(hc_red_conv1)
+    hc_red_conv2 = Convolution2D(64, 3, 3, init='he_normal', activation=act)(hc_red_zpad2)
+    hc_red_conv3 = Convolution2D(shp[0], 1, 1, init='he_normal', activation='sigmoid', name='aux_output')(hc_red_conv2)
+    
+    #Deconvolution process
+    after_conv4 = rblock(conv4, 1, 256)
+    up6 = merge([UpSampling2D(size=(2, 2))(conv5), after_conv4], mode='concat', concat_axis=1)
+    conv6 = inception_block(up6, 256, batch_mode=2, splitted=splitted, activation=act)
+    conv6 = Dropout(0.5)(conv6)
+    
+    after_conv3 = rblock(conv3, 1, 128)
+    up7 = merge([UpSampling2D(size=(2, 2))(conv6), after_conv3], mode='concat', concat_axis=1)
+    conv7 = inception_block(up7, 128, batch_mode=2, splitted=splitted, activation=act)
+    conv7 = Dropout(0.5)(conv7)
+    
+    after_conv2 = rblock(conv2, 1, 64)
+    up8 = merge([UpSampling2D(size=(2, 2))(conv7), after_conv2], mode='concat', concat_axis=1)
+    conv8 = inception_block(up8, 64, batch_mode=2, splitted=splitted, activation=act)
+    conv8 = Dropout(0.5)(conv8)
+    
+    after_conv1 = rblock(conv1, 1, 32)
+    up9 = merge([UpSampling2D(size=(2, 2))(conv8), after_conv1], mode='concat', concat_axis=1)
+    conv9 = inception_block(up9, 32, batch_mode=2, splitted=splitted, activation=act)
+    conv9 = Dropout(0.5)(conv9)
+    conv10 = Convolution2D(shp[0], 1, 1, init='he_normal', activation='sigmoid', name='main_output')(conv9)
+    
+    out = merge([conv10, hc_red_conv3], mode='ave', concat_axis=1)
+
+    model = Model(input=inputs, output=[out])
+    
+    if weights_path <> '':
+        print('-- Loading weights...')
+        model.load_weights(weights_path)
+    
+    model.compile(optimizer='Adam', loss='mse') #huber)
+    
+    return model
+#END myhypercolumn

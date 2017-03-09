@@ -155,8 +155,9 @@ if __name__ == '__main__':
     
     
     print ('-- Building the model...') 
-    model = cmodel.myhypercolumn(X[0].shape, '../output/weights/checkpoint_263it_w1-02.hdf5')
-
+    #model = cmodel.myhypercolumn(X[0].shape, '../output/weights/checkpoint_263it_w1-02.hdf5')
+    model = cmodel.weighted_hypercolumn(X[0].shape, '')
+    
     if fit:
         if not os.path.isfile('../output/weights') and not os.path.isdir('../output/weights'):
             os.mkdir('../output/weights')
@@ -167,41 +168,16 @@ if __name__ == '__main__':
         
         if augmentation:
             print ('-- Using real-time data augmentation...')
-            '''
-            # https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html
-            # this will do preprocessing and realtime data augmentation
-            datagen = aug.ImageDataGenerator(
-                featurewise_center=False,  # set input mean to 0 over the dataset
-                samplewise_center=False,  # set each sample mean to 0
-                featurewise_std_normalization=False,  # divide inputs by std of the dataset
-                samplewise_std_normalization=False,  # divide each input by its std
-                zca_whitening=False,  # apply ZCA whitening
-                rotation_range=15,  # randomly rotate images in the range (degrees, 0 to 180)
-                width_shift_range=0.2,  # randomly shift images horizontally (fraction of total width)
-                height_shift_range=0.2,  # randomly shift images vertically (fraction of total height)
-                rescale=1./255,
-                shear_range=0.2,
-                zoom_range=0.8,
-                horizontal_flip=True,  # randomly flip images
-                vertical_flip=True,  # randomly flip images
-                fill_mode='nearest')
-                
-            # Make the model learn using the image generator
-            model.fit_generator(datagen.flow(X, y, batch_size=11),
-                                samples_per_epoch=len(X),
-                                nb_epoch=10, 
-                                validation_data=(X_val, y_val),
-                                callbacks=callbacks,
-                                verbose=1)
-            '''
+            
             # https://keras.io/preprocessing/image/
             # we create two instances with the same arguments
             data_gen_args = dict(featurewise_center=False,
                                  featurewise_std_normalization=False,
                                  rotation_range=15.0,
-                                 width_shift_range=0.1,
-                                 height_shift_range=0.1,
-                                 zoom_range=0.2)
+                                 width_shift_range=0.2,
+                                 height_shift_range=0.2,
+                                 rescale=1./255,
+                                 zoom_range=0.5)
             image_datagen = ImageDataGenerator(**data_gen_args)
             mask_datagen = ImageDataGenerator(**data_gen_args)
             
@@ -217,11 +193,13 @@ if __name__ == '__main__':
             train_generator = it.izip(image_generator, mask_generator)
             
             print ('-- Fitting the model...')
+            # Exception: The model expects 2 input arrays, but only received one array. Found: array with shape (32, 3, 80, 112)
+            # TO DO: ADD CROSS VALIDATION METHOD            
             model.fit_generator(
                 train_generator,
                 samples_per_epoch=len(X),
+                validation_data = (X_val, y_val),
                 nb_epoch=500, callbacks=callbacks)
-                #nb_epoch=2)
         else:
             print ('-- Fitting the model...')
             model.fit({'main_input': X, 'aux_input': X},

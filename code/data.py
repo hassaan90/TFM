@@ -122,6 +122,7 @@ def generate_local_data(img, o_width=1024, o_height=436, w_factor=4, osize=128, 
 def prepare_data(img_rows=32, img_cols=32, color_type=3, only_val=False, data_augmentation=True, print_step=True):    
     print('-- prepare_data: Version: 09.11.16.') 
     
+    '''
     # train=['alley_1', 'bamboo_1', 'bandage_1', 'cave_2', 'market_2', 'market_6', 'shaman_2', 'sleeping_1', 'temple_2'] # 440
     # val=['alley_2', 'bamboo_2', 'bandage_2', 'cave_4', 'market_5', 'mountain_1', 'shaman_3', 'sleeping_2', 'temple_3'] # 450
     if only_val:
@@ -129,7 +130,11 @@ def prepare_data(img_rows=32, img_cols=32, color_type=3, only_val=False, data_au
     else:
         # train=['alley_1', 'bamboo_1', 'bandage_1', 'cave_2', 'market_2', 'market_6', 'shaman_2', 'sleeping_1', 'temple_2']
         train=['alley_1', 'bamboo_1', 'bandage_1', 'cave_2', 'market_2', 'market_6', 'shaman_2', 'sleeping_1', 'temple_2', 'alley_2', 'bamboo_2', 'bandage_2', 'cave_4', 'market_5', 'mountain_1', 'shaman_3', 'sleeping_2', 'temple_3']   
-
+    '''
+    
+    train=['alley_1']#, 'bamboo_1', 'bandage_1', 'cave_2', 'market_2', 'market_6', 'shaman_2', 'sleeping_1', 'temple_2'] # 440
+    val=['alley_2']#, 'bamboo_2', 'bandage_2', 'cave_4', 'market_5', 'mountain_1', 'shaman_3', 'sleeping_2', 'temple_3'] # 450
+    
     
     path = os.path.join(os.getcwd(),'../input/data','segnet')
     
@@ -380,8 +385,8 @@ def prepare_data(img_rows=32, img_cols=32, color_type=3, only_val=False, data_au
 def new_prepare_data(img_rows=32, img_cols=32, color_type=3, only_val=False, data_augmentation=False, print_step=True):    
     print('-- prepare_data: Version: 17.03.09.') 
     
-    train=['alley_1']#, 'bamboo_1', 'bandage_1', 'cave_2', 'market_2', 'market_6', 'shaman_2', 'sleeping_1', 'temple_2'] # 440
-    val=['alley_2']#, 'bamboo_2', 'bandage_2', 'cave_4', 'market_5', 'mountain_1', 'shaman_3', 'sleeping_2', 'temple_3'] # 450
+    train=['alley_1', 'bamboo_1', 'bandage_1', 'cave_2', 'market_2', 'market_6', 'shaman_2', 'sleeping_1', 'temple_2'] # 440
+    val=['alley_2', 'bamboo_2', 'bandage_2', 'cave_4', 'market_5', 'mountain_1', 'shaman_3', 'sleeping_2', 'temple_3'] # 450
     
     path = os.path.join(os.getcwd(),'../input/data','segnet')
     
