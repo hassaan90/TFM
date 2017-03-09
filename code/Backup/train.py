@@ -39,9 +39,6 @@ import custom_models as cmodel
 import data as d
 import augmentation as aug
 
-import itertools as it
-
-
 '''
 def closing_app():
     # delete global vars
@@ -129,35 +126,61 @@ if __name__ == '__main__':
     color_type = 3
     
     gen_data = 1
+    unidimensional = 0
     
-    fit = 1
-    augmentation = 1
+    fit = 0
+    augmentation = 0
     
     predicting = 0
     
     if gen_data:
         # Generate data    
-        X, y, X_val, y_val, Xa, ya, Xa_val, ya_val = d.new_prepare_data(img_rows, img_cols, color_type, False, False, True)
+        X, y, X_val, y_val, Xa, ya, Xa_val, ya_val = d.prepare_data(img_rows, img_cols, color_type, False, False, True)
         '''        
         del X
         del y
-        
+        '''
         del X_val
         del y_val
-        '''
+
         del Xa
         del ya
         del Xa_val
         del ya_val
+        
+        if unidimensional:
+            #Transform y to a 1D vector
+            y = np.array(np.reshape(y,(y.shape[0],color_type*img_rows*img_cols)))
+            y_val = np.array(np.reshape(y_val,(y_val.shape[0],color_type*img_rows*img_cols)))
             
     # img = 440, val= 450
     #print ('-- Images: '+str(y.shape[0])+', val. Images: '+str(y_val.shape[0]) +'.')
     
     
     print ('-- Building the model...') 
+    # VGG    
+    #model = cmodel.VGG_16(X[0].shape)
     model = cmodel.myhypercolumn(X[0].shape, '../output/weights/checkpoint_263it_w1-02.hdf5')
-
+    
+    # Inpainting
+    #model = cmodel.inpainting(X[0].shape)
+    
+    # RESNET 'weights/relu_res50_ep3000_best.hdf5')#, 'weights/sigmoid_rmse_01_1000.hdf5')
+    #model = cmodel.resnet(X[0].shape, 18)
+    
+    #model = cmodel.chorrinet(X[0].shape)
+    #model = cmodel.unet(X[0].shape)
+      
+    # SEGNET , 'weights/first_checkpoint681.hdf5')
+    #model = cmodel.segnet(X[0].shape)
+      
+    # INCEPTION UNET
+    #model = cmodel.get_unet_inception_2head(X[0].shape, 'weights/checkpoint_data-aug_unet_huber_286.hdf5') #'weights/unet_dice_1000.hdf5') #2100 unet_ep500.hdf5')
+    #model = cmodel.get_unet_inception_2head(Xa[0].shape)#, 'weights/checkpoint_scaleloss_aug.hdf5' )
+        
     if fit:
+        print ('-- Fitting the model...')
+        
         if not os.path.isfile('../output/weights') and not os.path.isdir('../output/weights'):
             os.mkdir('../output/weights')
         kfold_weights_path = os.path.join('../output/weights', 'checkpoint' + '.hdf5' )
@@ -167,7 +190,6 @@ if __name__ == '__main__':
         
         if augmentation:
             print ('-- Using real-time data augmentation...')
-            '''
             # https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html
             # this will do preprocessing and realtime data augmentation
             datagen = aug.ImageDataGenerator(
@@ -187,50 +209,25 @@ if __name__ == '__main__':
                 fill_mode='nearest')
                 
             # Make the model learn using the image generator
-            model.fit_generator(datagen.flow(X, y, batch_size=11),
-                                samples_per_epoch=len(X),
+            model.fit_generator(datagen.flow(Xa, ya, batch_size=11),
+                                samples_per_epoch=len(Xa),
                                 nb_epoch=10, 
-                                validation_data=(X_val, y_val),
+                                validation_data=(Xa_val, ya_val),
                                 callbacks=callbacks,
                                 verbose=1)
-            '''
-            # https://keras.io/preprocessing/image/
-            # we create two instances with the same arguments
-            data_gen_args = dict(featurewise_center=False,
-                                 featurewise_std_normalization=False,
-                                 rotation_range=15.0,
-                                 width_shift_range=0.1,
-                                 height_shift_range=0.1,
-                                 zoom_range=0.2)
-            image_datagen = ImageDataGenerator(**data_gen_args)
-            mask_datagen = ImageDataGenerator(**data_gen_args)
-            
-            # Provide the same seed and keyword arguments to the fit and flow methods
-            seed = 1
-            image_datagen.fit(X, augment=True, seed=seed)
-            mask_datagen.fit(y, augment=True, seed=seed)
-            
-            image_generator = image_datagen.flow(X)
-            mask_generator = mask_datagen.flow(y)
-            
-            # combine generators into one which yields image and masks
-            train_generator = it.izip(image_generator, mask_generator)
-            
-            print ('-- Fitting the model...')
-            model.fit_generator(
-                train_generator,
-                samples_per_epoch=len(X),
-                nb_epoch=500, callbacks=callbacks)
-                #nb_epoch=2)
-        else:
-            print ('-- Fitting the model...')
+        else:  
+            #model.fit(Xa, ya, batch_size=40, nb_epoch=50, verbose=1, validation_data=(Xa_val, ya_val), callbacks=callbacks)
+            #model.fit(X, y, batch_size=4, nb_epoch=100, verbose=1, validation_data=(X_val, y_val), callbacks=callbacks)
+        
+            # 1120/2 = 560
+            # 10,14,16,20,28,35,40,56,70,80,112,140,280,560,
             model.fit({'main_input': X, 'aux_input': X},
                       {'main_output': y, 'aux_output': y}, validation_split=0.5,
                       nb_epoch=500, batch_size=10, callbacks=callbacks)
         
-        # print ('-- Saving weights...')
-        # oname = os.path.join('../output/weights', 'weights.hdf5') #nb_epoch
-        # model.save_weights(oname)
+        print ('-- Saving weights...')
+        oname = os.path.join('../output/weights', 'weights.hdf5') #nb_epoch
+        model.save_weights(oname)
         
     if predicting:
         del X
@@ -249,12 +246,22 @@ if __name__ == '__main__':
         predictions = general_predictions[0]
         
         result = (predictions - predictions.min()) / (predictions.max() - predictions.min()) #Cal?
+                     
+        #print ('-- Saving predictions...')
+        if unidimensional:
+            result = np.array(np.reshape(predictions,(y.shape[0],color_type,img_rows,img_cols)))
         
         for idx in range(num_outputs): #y_val.shape[0]
             #idx = 0
                         
             output_img = result[idx]
-            pack = predictions[idx].transpose(1,2,0)
+            if unidimensional:
+                ib = np.array(output_img[0], dtype=np.float64)
+                ig = np.array(output_img[1], dtype=np.float64)
+                ir = np.array(output_img[2], dtype=np.float64)
+                pack = np.array([ib,ig,ir]).transpose(1,2,0)
+            else:
+                pack = predictions[idx].transpose(1,2,0)
             oname = os.path.join('../output/predictions', str(idx)+'_reg.png')
             cv2.imwrite(oname, pack*255)
             
