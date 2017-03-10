@@ -120,14 +120,25 @@ def compute_dssim(predicted_img, gt_img):
     dssim = np.divide(1-s,2)    
     return dssim
 
-
+def unison_shuffled_copies(a, b):
+    '''
+    X_val,y_val = unison_shuffled_copies(X_val,y_val)
+    img_x = X_val[10].transpose(1,2,0)
+    cv2.imwrite('X.jpg',img_x)
+    img_y = y_val[10].transpose(1,2,0)
+    cv2.imwrite('y.jpg',img_y)
+    '''
+    assert len(a) == len(b)
+    p = np.random.permutation(len(a)) #352 -> array([1, 5, 8, 6])
+    return a[p], b[p]
+  
     
 
 if __name__ == '__main__':
     # MemoryError: Error allocating 599851008 bytes 
     # AR: 1024/436 = 2.3486
     # AR: 224/96 = 2.3333 -> 896 / 384
-    # rows: 16,32,48,64,80,96,112,128,144,160,176,192,208,224,240,256,272,288,304,320,336,352,368,384,400,416,432,448,464,480,496,512,528,544,560,576,592,608,624,640,656,672,688,704,720,736,752,768,784    
+    # P. Values: 16,32,48,64,80,96,112,128,144,160,176,192,208,224,240,256,272,288,304,320,336,352,368,384,400,416,432,448,464,480,496,512,528,544,560,576,592,608,624,640,656,672,688,704,720,736,752,768,784    
     img_rows = 96
     img_cols = 224
     color_type = 3
@@ -137,8 +148,8 @@ if __name__ == '__main__':
     gen_data = 1
     
     fit = 1
-    augmentation = 1
-    manual_augmentation = False
+    augmentation = 0
+    manual_augmentation = True
     
     predicting = 0
     
@@ -152,10 +163,20 @@ if __name__ == '__main__':
         del X_val
         del y_val
         '''
-        del Xa
-        del ya
+        
         del Xa_val
         del ya_val
+        if manual_augmentation:
+            #Add Xa to X and ya to y
+            X = np.append(X,Xa, axis=0)
+            y = np.append(y,ya, axis=0)
+            # Randomize
+            X, y = unison_shuffled_copies(X, y)
+        
+        del Xa
+        del ya
+        
+
             
     # img = 440, val= 450
     #print ('-- Images: '+str(y.shape[0])+', val. Images: '+str(y_val.shape[0]) +'.')
@@ -163,7 +184,7 @@ if __name__ == '__main__':
     
     print ('-- Building the model...') 
     #model = cmodel.myhypercolumn(X[0].shape, '../output/weights/checkpoint_263it_w1-02.hdf5')
-    model = cmodel.weighted_hypercolumn(X[0].shape, '')
+    model = cmodel.weighted_hypercolumn(X[0].shape, '') # '../output/weights/normal_checkpoint.hdf5')
     
     if fit:
         if not os.path.isfile('../output/weights') and not os.path.isdir('../output/weights'):
@@ -241,11 +262,13 @@ if __name__ == '__main__':
             
         else:
             print ('-- Fitting the model...')
+            '''
             model.fit({'main_input': X, 'aux_input': X},
                       {'main_output': y, 'aux_output': y}, validation_split=0.5,
                       nb_epoch=10000, batch_size=10, callbacks=callbacks)
-            
-        
+            '''
+            model.fit(X, y, batch_size=10, nb_epoch=1000, verbose=1, validation_data=(X_val, y_val), callbacks=callbacks)
+
         print ('-- Saving weights...')
         oname = os.path.join('../output/weights', 'weights_ep10000.hdf5')
         model.save_weights(oname)

@@ -1197,7 +1197,7 @@ def weighted_hypercolumn(shp=(3,224,224), weights_path=''):
         print('-- Loading weights...')
         model.load_weights(weights_path)
     
-    model.compile(optimizer='Adam', loss='mse') #huber)
+    model.compile(optimizer='Adam', loss='mse')
     
     return model
 #END myhypercolumn
