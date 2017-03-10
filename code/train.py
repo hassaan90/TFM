@@ -124,20 +124,27 @@ def compute_dssim(predicted_img, gt_img):
     
 
 if __name__ == '__main__':
-    img_rows = 80 #80*2 #436/4 #128 #224 #109
-    img_cols = 112 #112*2 #1024/4 #128 #224 #256
+    # MemoryError: Error allocating 599851008 bytes 
+    # AR: 1024/436 = 2.3486
+    # AR: 224/96 = 2.3333 -> 896 / 384
+    # rows: 16,32,48,64,80,96,112,128,144,160,176,192,208,224,240,256,272,288,304,320,336,352,368,384,400,416,432,448,464,480,496,512,528,544,560,576,592,608,624,640,656,672,688,704,720,736,752,768,784    
+    img_rows = 96
+    img_cols = 224
     color_type = 3
+    
+    # Batch size 32 i res:80x144
     
     gen_data = 1
     
     fit = 1
     augmentation = 1
+    manual_augmentation = False
     
     predicting = 0
     
     if gen_data:
         # Generate data    
-        X, y, X_val, y_val, Xa, ya, Xa_val, ya_val = d.new_prepare_data(img_rows, img_cols, color_type, False, False, True)
+        X, y, X_val, y_val, Xa, ya, Xa_val, ya_val = d.new_prepare_data(img_rows, img_cols, color_type, False, manual_augmentation, True)
         '''        
         del X
         del y
@@ -168,16 +175,21 @@ if __name__ == '__main__':
         
         if augmentation:
             print ('-- Using real-time data augmentation...')
-            
+            print ('samples: '+ str(len(X)))
+            '''
             # https://keras.io/preprocessing/image/
             # we create two instances with the same arguments
             data_gen_args = dict(featurewise_center=False,
+                                 samplewise_center=False,
                                  featurewise_std_normalization=False,
+                                 samplewise_std_normalization=False,
+                                 zca_whitening=False,
                                  rotation_range=15.0,
                                  width_shift_range=0.2,
                                  height_shift_range=0.2,
-                                 rescale=1./255,
-                                 zoom_range=0.5)
+                                 rescale=1./255, #If data is normalized
+                                 zoom_range=0.6,
+                                 horizontal_flip=True)
             image_datagen = ImageDataGenerator(**data_gen_args)
             mask_datagen = ImageDataGenerator(**data_gen_args)
             
@@ -186,29 +198,57 @@ if __name__ == '__main__':
             image_datagen.fit(X, augment=True, seed=seed)
             mask_datagen.fit(y, augment=True, seed=seed)
             
-            image_generator = image_datagen.flow(X)
-            mask_generator = mask_datagen.flow(y)
+            image_generator = image_datagen.flow(X) batch_size=16)
+            mask_generator = mask_datagen.flow(y) batch_size=16)
             
             # combine generators into one which yields image and masks
             train_generator = it.izip(image_generator, mask_generator)
             
             print ('-- Fitting the model...')
             # Exception: The model expects 2 input arrays, but only received one array. Found: array with shape (32, 3, 80, 112)
-            # TO DO: ADD CROSS VALIDATION METHOD            
+            # TO DO: ADD CROSS VALIDATION METHOD  
             model.fit_generator(
                 train_generator,
                 samples_per_epoch=len(X),
                 validation_data = (X_val, y_val),
-                nb_epoch=500, callbacks=callbacks)
+                nb_epoch=1000, callbacks=callbacks)
+            '''
+            # https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html
+            # this will do preprocessing and realtime data augmentation
+            datagen = aug.ImageDataGenerator(
+                featurewise_center=False,  # set input mean to 0 over the dataset
+                samplewise_center=False,  # set each sample mean to 0
+                featurewise_std_normalization=False,  # divide inputs by std of the dataset
+                samplewise_std_normalization=False,  # divide each input by its std
+                zca_whitening=False,  # apply ZCA whitening
+                rotation_range=15.0,  # randomly rotate images in the range (degrees, 0 to 180)
+                width_shift_range=0.2,  # randomly shift images horizontally (fraction of total width)
+                height_shift_range=0.2,  # randomly shift images vertically (fraction of total height)
+                rescale=1./255,
+                shear_range=0.2,
+                zoom_range=0.8,
+                horizontal_flip=True,  # randomly flip images
+                vertical_flip=True,  # randomly flip images
+                fill_mode='nearest')
+                
+            # Make the model learn using the image generator
+            model.fit_generator(datagen.flow(X, y, batch_size=10),
+                                samples_per_epoch=len(X),
+                                nb_epoch=1000, 
+                                validation_data=(X_val, y_val),
+                                callbacks=callbacks,
+                                verbose=1)
+            
         else:
             print ('-- Fitting the model...')
             model.fit({'main_input': X, 'aux_input': X},
                       {'main_output': y, 'aux_output': y}, validation_split=0.5,
-                      nb_epoch=500, batch_size=10, callbacks=callbacks)
+                      nb_epoch=10000, batch_size=10, callbacks=callbacks)
+            
         
-        # print ('-- Saving weights...')
-        # oname = os.path.join('../output/weights', 'weights.hdf5') #nb_epoch
-        # model.save_weights(oname)
+        print ('-- Saving weights...')
+        oname = os.path.join('../output/weights', 'weights_ep10000.hdf5')
+        model.save_weights(oname)
         
     if predicting:
         del X
